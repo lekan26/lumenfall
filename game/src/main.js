@@ -23,12 +23,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   let autopilot = null;
   if (autopilotParam) {
-    autopilot = new Autopilot(world, input);
+    autopilot = new Autopilot(world, input, false);
     gameState = 'play';
     audio.init();
-    world.player.speed = 350;
-    world.player.magnetRadius = 300;
-    world.time = 239; // Fast-track to boss spawn for automated test
   }
 
   if (shotParam) {
@@ -53,12 +50,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function gameLoop(now) {
     requestAnimationFrame(gameLoop);
-    let dt = Math.min(0.1, (now - lastTime) / 1000);
+    const dt = Math.min(0.1, (now - lastTime) / 1000);
     lastTime = now;
-
-    if (autopilotParam) {
-      dt *= 3;
-    }
 
     // Handle global inputs
     if (input.isPressed('KeyM')) {
@@ -79,19 +72,29 @@ window.addEventListener('DOMContentLoaded', () => {
 
       if (autopilot) {
         autopilot.update(dt);
-        if (world.boss) {
-          world.boss.hp -= 20 * dt; // ensure autopilot defeats boss smoothly
-          if (world.boss.hp <= 0 && world.boss.active) {
-            world.boss.active = false;
-            world.onBossDeath();
-          }
-        }
       }
 
       world.update(dt, input);
 
       if (world.levelingUp) {
-        gameState = 'levelup';
+        if (autopilotParam) {
+          // Autopilot picks best upgrade card using intelligent scoring
+          let bestIdx = 0;
+          let bestScore = -1;
+          world.currentCards.forEach((c, idx) => {
+            let score = 0;
+            if (c.id === 'heavy' || c.id === 'rapid' || c.id === 'split') score = 10;
+            else if (c.id === 'vital' || c.id === 'thick' || c.id === 'swift') score = 5;
+            else score = 1;
+            if (score > bestScore) {
+              bestScore = score;
+              bestIdx = idx;
+            }
+          });
+          world.chooseUpgrade(bestIdx);
+        } else {
+          gameState = 'levelup';
+        }
       } else if (world.gameOver) {
         gameState = 'gameover';
         if (world.time > bestTime) {

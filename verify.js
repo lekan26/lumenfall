@@ -93,7 +93,7 @@ async function verify() {
     await page.goto(`http://localhost:8081/${shot.query}`);
     
     try {
-      await page.waitForFunction(() => window.__shotReady === true, { timeout: 10000 });
+      await page.waitForFunction(() => window.__shotReady === true, { timeout: 15000 });
     } catch (e) {
       console.warn(`Timeout waiting for __shotReady on ${shot.name}`);
     }
@@ -117,16 +117,23 @@ async function verify() {
   await deathPage.goto('http://localhost:8081/');
   
   await new Promise(r => setTimeout(r, 1000));
-  // Click Start Game button at (640, 530)
-  await deathPage.mouse.click(640, 530);
+  await deathPage.mouse.click(640, 530); // click Start
 
   let timeToDeath = 0;
   const startTime = Date.now();
   while (true) {
     await new Promise(r => setTimeout(r, 1000));
-    const phase = await deathPage.evaluate(() => window.__game ? window.__game.phase : 'play');
+    const state = await deathPage.evaluate(() => {
+      if (!window.__game) return { phase: 'play' };
+      return { phase: window.__game.phase };
+    });
+
+    if (state.phase === 'levelup') {
+      await deathPage.keyboard.press('Digit1');
+    }
+
     const timeElapsed = (Date.now() - startTime) / 1000;
-    if (phase === 'gameover' || timeElapsed > 75) {
+    if (state.phase === 'gameover' || timeElapsed > 75) {
       timeToDeath = timeElapsed;
       break;
     }
@@ -143,7 +150,7 @@ async function verify() {
   await setupPageListeners(autoPage);
   await autoPage.goto('http://localhost:8081/?autopilot=1');
 
-  let autoStats = { time: 0, level: 1, kills: 0 };
+  let autoStats = { time: 0, level: 1, kills: 0, phase: 'play' };
   const autoStartTime = Date.now();
   while (true) {
     await new Promise(r => setTimeout(r, 2000));
@@ -165,6 +172,10 @@ async function verify() {
   }
   await autoPage.close();
   console.log(`Autopilot finished: phase=${autoStats.phase}, time=${autoStats.time.toFixed(1)}s, level=${autoStats.level}, kills=${autoStats.kills}`);
+
+  if (autoStats.phase !== 'victory') {
+    throw new Error(`Autopilot did not win! Ended with phase: ${autoStats.phase}`);
+  }
 
   // 7. Verify main.ts reproducibility
   console.log('Verifying main.ts output reproducibility...');

@@ -143,8 +143,8 @@ export class World {
     if (this.time < CONFIG.ENEMIES.boss.spawnTime) {
       this.spawnTimer -= dt;
       let progress = Math.min(1, this.time / CONFIG.ENEMIES.boss.spawnTime);
-      let currentInterval = 1.1 - (1.1 - 0.35) * progress;
-      let batchSize = 1 + Math.floor(progress * 3);
+      let currentInterval = 1.1 - (1.1 - 0.5) * progress;
+      let batchSize = 1 + Math.floor(progress * 2);
 
       if (this.spawnTimer <= 0 && this.enemies.length < 70) {
         this.spawnTimer = currentInterval;

@@ -251,22 +251,28 @@ export class Renderer {
     ctx.lineWidth = 1.5;
     ctx.strokeRect(270, 25, 740, 14);
 
-    ctx.fillStyle = '#0b0e14';
+    ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(`LEVEL ${world.player.level} (XP: ${world.player.xp} / ${world.player.nextXp})`, 640, 37);
 
-    // Stats top right: Time, Kills, Shards
+    // Stats top right: Time, Kills, Shards with translucent backing for perfect legibility
+    ctx.fillStyle = 'rgba(20, 24, 33, 0.85)';
+    ctx.fillRect(1040, 20, 225, 80);
+    ctx.strokeStyle = '#64ffda';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(1040, 20, 225, 80);
+
     ctx.textAlign = 'right';
     ctx.font = 'bold 16px monospace';
     ctx.fillStyle = '#ffeb3b';
     const mins = Math.floor(world.time / 60).toString().padStart(2, '0');
     const secs = Math.floor(world.time % 60).toString().padStart(2, '0');
-    ctx.fillText(`TIME: ${mins}:${secs}`, 1250, 40);
+    ctx.fillText(`TIME: ${mins}:${secs}`, 1250, 42);
     ctx.fillStyle = '#ab47bc';
-    ctx.fillText(`KILLS: ${world.kills}`, 1250, 65);
+    ctx.fillText(`KILLS: ${world.kills}`, 1250, 67);
     ctx.fillStyle = '#64ffda';
-    ctx.fillText(`SHARDS: ${world.totalShardsCollected}`, 1250, 90);
+    ctx.fillText(`SHARDS: ${world.totalShardsCollected}`, 1250, 92);
 
     // Flare charges (bottom center)
     ctx.textAlign = 'center';
@@ -407,7 +413,6 @@ export class Renderer {
 
       ctx.fillStyle = '#ffffff';
       ctx.font = '16px monospace';
-      // Word wrap description
       ctx.fillText(card.desc, cx + cardWidth / 2, cy + 200);
 
       ctx.fillStyle = 'rgba(100, 255, 218, 0.2)';

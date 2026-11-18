@@ -98,6 +98,17 @@ async function verify() {
       console.warn(`Timeout waiting for __shotReady on ${shot.name}`);
     }
 
+    // Assert the staged outcome is real: the win shot must be a genuine
+    // victory, the loss shot a genuine game over.
+    const result = await page.evaluate(() => window.__shotResult || null);
+    if (shot.name.includes('win') && (!result || !result.victory)) {
+      throw new Error(`Win shot did not reach a real victory: ${JSON.stringify(result)}`);
+    }
+    if (shot.name.includes('loss') && (!result || !result.gameOver)) {
+      throw new Error(`Loss shot did not reach a real game over: ${JSON.stringify(result)}`);
+    }
+    if (result) console.log(`Shot ${shot.name}:`, JSON.stringify(result));
+
     const screenshotBuffer = await page.screenshot({ type: 'jpeg', quality: 80 });
     const bytes = screenshotBuffer.length;
     if (bytes > 262144) {

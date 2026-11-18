@@ -81,6 +81,31 @@ export class Autopilot {
         targetY = p.y + (Math.random() - 0.5) * 20;
       }
     } else {
+      // Flee from the whole nearby pack, not just the nearest enemy.
+      let fleeX = 0;
+      let fleeY = 0;
+      let closeCount = 0;
+      this.world.enemies.forEach(e => {
+        if (!e.active) return;
+        const d = Math.hypot(e.x - p.x, e.y - p.y);
+        if (d < 260 && d > 1) {
+          const w = (260 - d) / 260;
+          fleeX += ((p.x - e.x) / d) * w;
+          fleeY += ((p.y - e.y) / d) * w;
+          if (d < 180) closeCount += 1;
+        }
+      });
+      if (this.world.boss && this.world.boss.active) {
+        const b = this.world.boss;
+        const d = Math.hypot(b.x - p.x, b.y - p.y);
+        if (d < 300 && d > 1) {
+          const w = (300 - d) / 300;
+          fleeX += ((p.x - b.x) / d) * w * 2;
+          fleeY += ((p.y - b.y) / d) * w * 2;
+          if (d < 220) closeCount += 1;
+        }
+      }
+
       let nearestShard = null;
       let minShardDist = Infinity;
       if (this.world.shards) {
@@ -93,14 +118,18 @@ export class Autopilot {
         });
       }
 
-      if (nearestShard && minShardDist < 350 && enemyDist > 140) {
+      if (closeCount > 0) {
+        targetX = p.x + fleeX * 300;
+        targetY = p.y + fleeY * 300;
+      } else if (nearestShard && minShardDist < 350) {
         targetX = nearestShard.x;
         targetY = nearestShard.y;
       } else if (nearestEnemy) {
+        // Strafe at range so the bolts keep landing while staying out of reach.
         let angleToEnemy = Math.atan2(nearestEnemy.y - p.y, nearestEnemy.x - p.x);
-        if (enemyDist < 200) {
-          targetX = p.x - Math.cos(angleToEnemy) * 220;
-          targetY = p.y - Math.sin(angleToEnemy) * 220;
+        if (enemyDist < 220) {
+          targetX = p.x - Math.cos(angleToEnemy) * 200;
+          targetY = p.y - Math.sin(angleToEnemy) * 200;
         } else {
           targetX = p.x + Math.sin(angleToEnemy) * 160;
           targetY = p.y - Math.cos(angleToEnemy) * 160;
@@ -137,7 +166,9 @@ export function runShotScene(shotName, world, audio, renderer, seed = 1) {
 
   try {
     const input = new FakeInput();
-    const dt = 0.05;
+    // Simulate at 60 Hz, the same step the live game runs at, so the staged
+    // scenes play exactly like a real run.
+    const dt = 1 / 60;
 
     if (shotName === 'start') {
       const simTime = 5;
@@ -147,7 +178,7 @@ export function runShotScene(shotName, world, audio, renderer, seed = 1) {
       renderer.clear();
       renderer.drawTitleScreen(0);
     } else if (shotName === 'play') {
-      const simTime = 26;
+      const simTime = 60;
       const auto = new Autopilot(world, input, false);
       for (let t = 0; t < simTime; t += dt) {
         auto.update(dt);
@@ -164,7 +195,8 @@ export function runShotScene(shotName, world, audio, renderer, seed = 1) {
         t += dt;
       }
       renderer.clear();
-      renderer.drawEndScreen(world, true);
+      // Draw the TRUE outcome: a run that died must never render as a win.
+      renderer.drawEndScreen(world, world.victory);
     } else if (shotName === 'loss') {
       const auto = new Autopilot(world, input, true);
       let t = 0;
@@ -180,5 +212,16 @@ export function runShotScene(shotName, world, audio, renderer, seed = 1) {
     Math.random = origRandom;
   }
 
+  // The real outcome, so the verifier (and any reader) can tell a genuine
+  // win from a run that died on the way to the boss.
+  window.__shotResult = {
+    shot: shotName,
+    victory: world.victory,
+    gameOver: world.gameOver,
+    time: world.time,
+    level: world.player.level,
+    kills: world.kills,
+    shards: world.totalShardsCollected,
+  };
   window.__shotReady = true;
 }
